@@ -26,7 +26,9 @@ la metodología «Aprende a Monetizar» (abajo) junto con tu experiencia del eco
    facilidad de producirlo automatizado (sin rostro, edición simple, audiencia mayor), competencia en español,
    validación (≥5 referentes en inglés de ≤1 año con ~1M visitas/mes), si el «sin rostro» está VERIFICADO en imágenes
    (campo rostro: sin_rostro / con_rostro / dudoso; un canal con_rostro NO es replicable como automatizado),
-   si está MONETIZADO (campo monetizado: veredicto si/no/probable/aun_no y su confianza; solo «confirmado» es 100 % seguro), evergreen vs. trendy, riesgo de políticas y
+   si está MONETIZADO (campo monetizado: veredicto y confianza; solo «confirmado» es seguro, y prueba el Programa de Socios, no necesariamente anuncios),
+   y la procedencia de las visitas: «real» = mes medido; «medido» sin «real» = proyección desde pocos días; sin ambos = estimación.
+   Ganancias y RPM SIEMPRE son estimaciones (CPM del nicho × factores), nunca ingresos observados: dilo así. evergreen vs. trendy, riesgo de políticas y
    tiempo hasta monetizar (1.000 suscriptores + 4.000 horas de reproducción pública en 12 meses).
 5. **Decide**: elige UNA opción y defiéndela con números. Si los datos no alcanzan, dilo, elige lo más probable y
    propone la acción exacta para confirmarlo.
@@ -65,11 +67,11 @@ PANEL = [
      "referentes en inglés (mismo nicho, ya validados), competencia directa (mismo nicho en español) y competencia indirecta (nichos vecinos o temas "
      "que se cruzan con los tuyos), además de los temas que funcionan en inglés y aún no tocas."),
     (("rpm más alto", "rpm mas alto", "nicho que más paga", "nicho que mas paga", "mejor pagado"), "💵 En Oportunidad → «Nichos con RPM más alto» ves "
-     "cuánto gana el creador por cada 1.000 visitas en cada nicho, con el RPM real de los canales que ya analicé."),
-    (("monetizado", "monetizada", "monetizacion activa", "socio", "ypp"), "💰 En la ficha de cada canal verás «¿Está monetizado?». Digo «confirmado» solo con "
-     "una prueba segura: el botón «Unirse» o «Super Thanks» (solo existen en canales del Programa de Socios) o menos de 1.000 suscriptores (no puede "
-     "ganar con anuncios). Si no, te digo si cumple los requisitos (1.000 suscriptores + 4.000 horas, o 10 M visitas en Shorts) y con qué confianza. "
-     "Nadie fuera de YouTube Studio puede saberlo al 100 % en todos los casos."),
+     "cuánto gana el creador por cada 1.000 visitas en cada nicho, con el RPM ESTIMADO de los canales que ya analicé (es una estimación, no ingresos observados)."),
+    (("monetizado", "monetizada", "monetizacion activa", "socio", "ypp"), "💰 En la ficha de cada canal verás «¿Está monetizado?». Solo digo «confirmado» con una prueba "
+     "directa en su página: el botón «Unirse» o «Super Thanks» (solo existen en el Programa de Socios, que también tiene un nivel ampliado desde 500 "
+     "suscriptores solo con funciones de fans). Con menos de 500 suscriptores, muy probablemente no está monetizado; con 500-999, no tiene anuncios pero "
+     "podría tener funciones de fans. Con más, te digo si cumpliría los requisitos según una ESTIMACIÓN de horas, que no es una prueba."),
     (("alerta", "avisame", "avísame", "notifica"), "🔔 Cada día reviso tus canales (los tuyos, los guardados ☆ y los que sigues 👁) y tus nichos seguidos. "
      "Te aviso cuando sale un outlier nuevo (un video que va varias veces más rápido que lo normal en su canal) o cuando un canal joven explota. "
      "Mira la campana de arriba; en Ajustes cambias el umbral y la frecuencia."),

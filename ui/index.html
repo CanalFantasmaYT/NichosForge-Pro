@@ -605,10 +605,18 @@ const S = {_cargado: Date.now()/1000 - 1, _manejado: null, E:null, page:"inicio"
            acciones:[], ACAD:null,
            tab:"canales", charts:{}, ultimoTrabajo:null, metrica:"v"};
 
+function etiquetaVisitas(c, corto){
+  /* real = mes medido de verdad · proy. = proyección/promedio desde mediciones · est. = estimación sin mediciones */
+  if (!c) return "";
+  if (c.real) return `<span class="chip up" style="padding:0 5px" title="${esc(c.metodo_mes||"")}">real</span>`;
+  if (c.medido) return `<span class="chip warn" style="padding:0 5px" title="${esc(c.metodo_mes||"")}">proy.</span>`;
+  return corto ? "" : `<span class="chip" style="padding:0 5px" title="Estimado: ${esc(c.metodo_mes||"")}">est.</span>`;
+}
 async function api(path, body){
   const ctl = new AbortController(), tm = setTimeout(()=>ctl.abort(), 90000);
   let r;
-  try{ r = await fetch(path, {...(body ? {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)} : {}), signal:ctl.signal}); }
+  const token = (document.querySelector('meta[name="nf-token"]')||{}).content || "";
+  try{ r = await fetch(path, {...(body ? {method:"POST", headers:{"Content-Type":"application/json", "X-NF-Token":token}, body:JSON.stringify(body)} : {}), signal:ctl.signal}); }
   catch(e){ throw new Error(e.name==="AbortError" ? "El panel tardó demasiado en responder. Revisa la ventana negra de NichosForge." : "No hay conexión con el panel (¿cerraste la ventana negra?)."); }
   finally{ clearTimeout(tm); }
   const d = await r.json();
@@ -720,7 +728,7 @@ function renderInicio(){
   el.innerHTML = `
   <div class="grid g4">
     ${kpi("Suscriptores", m?fmtN(m.suscriptores):"—", m?`<canvas id="spSubs"></canvas>`:"", null)}
-    ${kpi(m&&m.real?"Visitas al mes (real ✓)":"Visitas al mes (est.)", m?fmtN(m.visitas_mes):"—", m?`<canvas id="spVis"></canvas>`:"", [icU])}
+    ${kpi(m&&m.real?"Visitas al mes (real ✓)":m&&m.medido?"Visitas al mes (proyección)":"Visitas al mes (est.)", m?fmtN(m.visitas_mes):"—", m?`<canvas id="spVis"></canvas>`:"", [icU])}
     ${kpi(`Ganancia del mes <span class="hint">est.</span>`, m?usd(m.ingreso_mes):"—", "", [icM,"tan"])}
     <div class="card green kpi"><div class="grow"><div class="lbl">Ganancia de hoy <span class="live"><i></i>Est.</span></div><div class="val">${m?usd(m.ingreso_mes/30,2):"—"}</div>
       <div class="sub" style="font-size:11.5px">RPM ${m?usd(m.rpm_bajo,2)+"–"+usd(m.rpm_alto,2):"—"}</div></div>${m?`<canvas id="spHoy"></canvas>`:""}</div>
@@ -795,8 +803,8 @@ function canalCompleto(a, pre){
   <div class="grid g4">
     ${kpiMini("Suscriptores", fmtN(a.suscriptores), a.subs_por_video?`${fmtN(a.subs_por_video)} por video`:"")}
     ${kpiMini("Visitas totales", fmtN(a.visitas_totales), `${fmtN(a.videos)} videos · creado hace ${edadTxt(a.edad_dias)}`)}
-    ${kpiMini(a.real?"Visitas al mes ✓ real":"Visitas al mes (est.)", fmtN(a.visitas_mes), esc(a.metodo_mes))}
-    ${kpiMini(a.real?"Ganancia al mes (con visitas reales)":"Ganancia al mes (est.)", usd(a.ingreso_mes), `${usd(a.ingreso_mes_bajo)} – ${usd(a.ingreso_mes_alto)}`, true)}
+    ${kpiMini(a.real?"Visitas al mes ✓ real":a.medido?"Visitas al mes (proyección)":"Visitas al mes (est.)", fmtN(a.visitas_mes), esc(a.metodo_mes))}
+    ${kpiMini(a.medido?"Ganancia al mes (est., con visitas medidas)":"Ganancia al mes (est.)", usd(a.ingreso_mes), `${usd(a.ingreso_mes_bajo)} – ${usd(a.ingreso_mes_alto)} · RPM estimado`, true)}
   </div>
   <div class="grid g4" style="margin-top:18px">
     ${kpiMini("Me gusta promedio", fmtN(a.likes_prom), `${a.likes_por_mil} por cada mil visitas`)}
@@ -979,7 +987,7 @@ function renderResultados(){
     : k==="salud" ? `<span class="salud ${c.salud||"dudoso"}" title="${esc(c.salud_nota||"")}">${SALUD[c.salud]||"—"}</span>`
     : k==="audiencia" ? `<span class="aud ${c.audiencia||"general"}" title="${esc(c.audiencia_nota||"")}">${AUD[c.audiencia]||"—"}</span>`
     : k==="edad_dias" ? edadTxt(c.edad_dias) : k==="interaccion" ? c.interaccion+"%" : ["cpm","rpm"].includes(k) ? usd(c[k],2) : k==="ingreso_mes" ? `<b>${usd(c.ingreso_mes)}</b>`
-    : k==="categoria" ? esc(c.categoria) : k==="visitas_mes" ? `${fmtN(c.visitas_mes)}${c.real?` <span class="chip up" style="padding:0 5px" title="${esc(c.metodo_mes)}">real</span>`:""}` : fmtN(c[k]);
+    : k==="categoria" ? esc(c.categoria) : k==="visitas_mes" ? `${fmtN(c.visitas_mes)} ${etiquetaVisitas(c, true)}` : fmtN(c[k]);
   box.innerHTML = `<div class="card">
     <div class="row"><div class="grow"><h2>${esc(b.titulo)}</h2><div class="sub">${fecha(b.fecha)} · ${b.canales.length} canales · <b style="color:var(--sage)">${ref} referentes</b> · <b style="color:#3550c8">${b.canales.filter(c=>c.auto_tipo==="automatizado").length} automatizados</b> · ${(b.virales||[]).length} videos virales
       ${(b.frases||[]).length?` · ${b.frases.map(f=>`<span class="chip" style="font-size:11px">${(f.idioma||"todos").toUpperCase()} ${esc(f.texto)}</span>`).join(" ")}`:""}</div></div>
@@ -1724,7 +1732,7 @@ function cardCanal(c, i){
     <div class="top"><i style="background-image:url('${esc(c.avatar)}')"></i><div style="min-width:0;flex:1"><b onclick="abrirCanal('${c.id}')">${esc(c.canal)}</b>
       <div class="hint">${fmtN(c.suscriptores)} subs · ${edadTxt(c.edad_dias)} · ${(c.idioma||"").toUpperCase()}</div></div><span class="sc ${scClase(c.score)}">${Math.round(c.score)}</span></div>
     <div class="row" style="gap:6px">${chipNicho(c.nicho, "", "canal", c.id)}<span class="auto ${c.auto_tipo}" title="${esc((c.rostro||{}).motivo||"Sin verificar en imágenes")}">${etiquetaAuto(c)} ${c.auto_score}%</span><span class="salud ${c.salud}">${SALUD[c.salud]||""}</span></div>
-    <div class="stats"><div><b>${fmtN(c.visitas_mes)}</b><span>visitas/mes${c.real?" ✓ real":""}</span></div><div><b>${usd(c.ingreso_mes)}</b><span>ganancia/mes</span></div><div><b>${c.videos_encontrados}</b><span>virales hallados</span></div></div>
+    <div class="stats"><div><b>${fmtN(c.visitas_mes)}</b><span>visitas/mes${c.real?" ✓ real":c.medido?" (proy.)":""}</span></div><div><b>${usd(c.ingreso_mes)}</b><span>ganancia/mes (est.)</span></div><div><b>${c.videos_encontrados}</b><span>virales hallados</span></div></div>
     <div class="row" style="gap:6px">${btnC(c.id, c.nicho, true)}
       <button class="btn sm" onclick="abrirCanal('${c.id}')">📊 Ficha</button><a class="btn sm" href="${esc(c.url)}" target="_blank">▶ YouTube</a>
       <button class="btn sm" onclick="buscarSimilares(['${c.id}'])" title="Buscar canales parecidos">✨</button></div></div>`;
@@ -2278,7 +2286,7 @@ async function renderSeguimiento(){
   const prox = d.ultima_foto ? Math.max(0, Math.round((new Date(d.ultima_foto).getTime() + d.intervalo_horas*3600000 - Date.now())/60000)) : 0;
   const th = (key, n, num=true) => `<th data-sk="${key}" class="${num?"num":""} ${S.segSort.k===key?"s"+(S.segSort.asc?" asc":""):""}">${n}</th>`;
   el.innerHTML = `<div class="card"><div class="row"><div class="grow"><h2 style="font-size:20px">📈 Seguimiento real de visitas</h2>
-      <div class="sub">Cada ${d.intervalo_horas} h tomo una "foto" de las visitas, suscriptores y videos de tus canales, los guardados y los que sigues. Con la diferencia entre fotos mido lo que <b>de verdad</b> ganan, y esas cifras reemplazan a las estimadas en todo el programa.</div></div>
+      <div class="sub">Cada ${d.intervalo_horas} h tomo una "foto" de las visitas, suscriptores y videos de tus canales, los guardados y los que sigues. Con la diferencia entre fotos mido lo que <b>de verdad</b> ganan. «real» = mes medido completo; «proy.» = proyección o promedio de lo medido; «est.» = estimación sin mediciones.</div></div>
       <button class="btn pri" id="segFoto">📸 Tomar foto ahora</button></div>
     <div class="row" style="margin-top:12px;gap:8px"><span class="chip">${cs.length} canales seguidos</span><span class="chip">Última foto: ${hace(d.ultima_foto)}</span>
       <span class="chip">${d.ultima_foto ? (prox>0 ? `Próxima en ~${prox>=60?Math.round(prox/60)+" h":prox+" min"}` : "Próxima: en cuanto abras el panel") : "Aún sin fotos"}</span>
@@ -2304,7 +2312,7 @@ async function renderSeguimiento(){
       <td><span class="hint">${m.fotos?`${m.dias} días · ${m.fotos} fotos`:"sin fotos"}</span></td>
       <td class="num">${celdaGan(m.d1)}</td><td class="num">${celdaGan(m.d7)}</td><td class="num">${celdaGan(m.d30)}</td>
       <td class="num">${chipCrec(m.crecimiento)}</td><td class="num">${m.d7&&m.d7.subs!=null?(m.d7.subs>=0?"+":"")+fmtN(m.d7.subs):"—"}</td>
-      <td class="num">${fmtN(c.visitas_mes)} ${c.real?`<span class="chip up" style="padding:0 6px" title="${esc(c.metodo_mes)}">real</span>`:`<span class="chip" style="padding:0 6px" title="Aún estimado: ${esc(c.metodo_mes)}">est.</span>`}</td>
+      <td class="num">${fmtN(c.visitas_mes)} ${etiquetaVisitas(c)}</td>
       <td class="num">${usd(c.ingreso_mes)}</td><td>${spark(m.serie)}</td>
       <td class="nowrap">${c.origen==="seguido"?`<button class="btn sm" onclick="dejarSeguir('${c.id}')" title="Dejar de seguir">✕</button>`:""}${btnC(c.id, c.nicho)}</td></tr>`; }).join("")}</table></div></div>`
   : `<div class="card empty" style="margin-top:18px"><div class="big">📈</div>Aún no sigues canales.<br>Conecta tus canales, guarda canales en el embudo (☆) o escribe arriba un @canal y pulsa <b>👁 Seguir canal</b>.</div>`}`;
@@ -2357,7 +2365,7 @@ contextoBot = function(){
   const c = _contextoBot3();
   if (S.SEG) c.seguimiento_real = S.SEG.canales.filter(x=>x.seguimiento).slice(0,15).map(x=>({canal:x.canal, origen:x.origen, dias_medidos:x.seguimiento.dias,
     visitas_24h:(x.seguimiento.d1||{}).ganadas, visitas_7d:(x.seguimiento.d7||{}).ganadas, visitas_30d:(x.seguimiento.d30||{}).ganadas, crecimiento_semanal:x.seguimiento.crecimiento,
-    visitas_mes_real:x.real?x.visitas_mes:null}));
+    visitas_mes:x.visitas_mes, como_se_midio:x.metodo_mes, mes_real_medido:!!x.real}));
   return c;
 };
 const _datoAleatorio2 = datoAleatorio;
@@ -2874,7 +2882,7 @@ function bloqueMonet(a){
   const m = a.monetizado || {};
   const ico = {bien:"✓", mal:"✕", neutral:"·"}, col = {bien:"var(--good)", mal:"#e5534b", neutral:"var(--muted)"};
   return `<div class="card" style="margin-top:18px" id="monetBox-${a.id}"><div class="row"><h2 class="grow">💰 ¿Está monetizado?</h2>
-      <span class="chip ${m.confianza==="confirmado"?"up":""}">${m.confianza==="confirmado"?"100 % seguro":"confianza "+esc(m.confianza||"—")}</span></div>
+      <span class="chip ${m.confianza==="confirmado"?"up":""}">${m.confianza==="confirmado"?"prueba directa ✓":"confianza "+esc(m.confianza||"—")}</span></div>
     <div class="row" style="margin-top:10px;gap:10px">${chipMonet(m)}<span class="small">${esc(m.motivo||"")}</span></div>
     <div style="margin-top:10px">${(m.senales||[]).map(([t,txt])=>`<div class="small" style="display:flex;gap:8px;padding:3px 0"><b style="color:${col[t]};width:12px">${ico[t]}</b><span>${esc(txt)}</span></div>`).join("")}</div>
     <div class="row" style="margin-top:10px;gap:6px">
@@ -2942,7 +2950,7 @@ function tarjetaMapa(c, i, tipo, yoVm){
       ${tipo==="referentes"?`<span class="sc ${scClase(c.puntaje_ref||0)}" title="Qué tan buen referente es para ti">${c.puntaje_ref||"—"}</span>`:`<span class="chip" title="Temas en común contigo">${c.parecido||0}%</span>`}</div>
     <div class="row" style="gap:5px">${chipNicho(c.nicho||"Sin clasificar","","canal",c.id)}${chipMonet(c.monetizado, true)}${c.rostro&&c.rostro.veredicto==="sin_rostro"?`<span class="chip up">✓ sin rostro</span>`:""}</div>
     <div class="small muted">${esc(c.por_que||"")}</div>
-    <div class="stats"><div><b>${fmtN(c.visitas_mes)}</b><span>visitas/mes${c.real?" ✓":""}</span></div><div><b>${usd(c.ingreso_mes)}</b><span>ganancia/mes</span></div>
+    <div class="stats"><div><b>${fmtN(c.visitas_mes)}</b><span>visitas/mes${c.real?" ✓":c.medido?" (proy.)":""}</span></div><div><b>${usd(c.ingreso_mes)}</b><span>ganancia/mes (est.)</span></div>
       <div><b style="color:${dif==null?"inherit":dif>=0?"var(--good)":"#e5534b"}">${dif==null?"—":(dif>0?"+":"")+fmtN(dif)+"%"}</b><span>vs. tu canal</span></div></div>
     <div class="row" style="gap:6px">${btnC(c.id, c.nicho, true)}<button class="btn sm" onclick="abrirCanal('${c.id}')">📊 Ficha</button>
       <button class="btn sm" onclick="seguirCanal('${c.id}')" title="Medir sus visitas reales">👁</button></div></div>`;
@@ -2963,7 +2971,7 @@ async function renderMapa(){
     <div class="card"><div class="row" style="gap:10px"><i style="width:48px;height:48px;border-radius:50%;background:var(--soft2) url('${esc(m.yo.avatar)}') center/cover"></i>
       <div><b style="font-size:16px">${esc(m.yo.canal)}</b><div class="hint">${esc(m.yo.nicho||m.yo.categoria||"")}</div></div></div>
       <div class="row" style="gap:5px;margin-top:10px">${chipMonet(m.yo.monetizado)}</div></div>
-    ${kpiMini("Tus visitas al mes", fmtN(m.comparativa.yo), m.yo.real ? "medidas ✓" : "estimadas")}
+    ${kpiMini("Tus visitas al mes", fmtN(m.comparativa.yo), m.yo.real ? "medidas ✓" : m.yo.medido ? "proyección de lo medido" : "estimadas")}
     ${kpiMini("Referentes (mediana)", fmtN(m.comparativa.referentes), m.comparativa.yo ? `${Math.round(m.comparativa.referentes / m.comparativa.yo * 10)/10}x lo tuyo` : "")}
     ${kpiMini("Tu posición en español", `#${m.comparativa.posicion} de ${m.comparativa.de}`, m.directa.length ? `competencia directa: ${fmtN(m.comparativa.directa)} visitas/mes` : "sin competencia directa fuerte 🎉", true)}
   </div>
@@ -3037,17 +3045,17 @@ renderOportunidad = async function(){
     let d; try{ d = await api("/api/rpm_nichos"); }catch(e){ throw e; }
     const N = d.nichos, max = Math.max(...N.map(n=>n.rpm_alto), 1);
     el.innerHTML = sel + `<div class="card"><h2 style="font-size:20px">💵 Nichos con RPM más alto</h2>
-      <div class="sub">Lo que gana el creador por cada 1.000 visitas en cada nicho. Si ya analicé canales del nicho uso <b>su RPM real calculado</b> (país, audiencia, duración); si no, la tabla de CPM con un canal típico de EE. UU.</div>
+      <div class="sub">Lo que gana el creador por cada 1.000 visitas en cada nicho. Es una <b>estimación</b>: si ya analicé canales del nicho, uso el RPM estimado de esos canales (CPM del nicho × su país, audiencia y duración); si no, la tabla de CPM con un canal típico de EE. UU.</div>
       <div class="chartbox lg" style="margin-top:12px;height:${Math.max(320, Math.min(N.length, 16)*28)}px"><canvas id="rpmChart"></canvas></div></div>
     <div class="card" style="margin-top:18px"><div class="tw"><table class="t"><tr><th>#</th><th>Nicho</th><th class="num">RPM</th><th>Rango</th><th class="num">Por 1 M visitas</th><th class="num">CPM</th><th class="num">Ganancia/mes típica</th><th>Ejemplos</th><th>Dato</th></tr>
       ${N.map((n,i)=>`<tr><td><b>${i+1}</b></td><td style="white-space:normal;min-width:170px">${chipNicho(n.nicho,"","nicho","")}</td><td class="num"><b>$${n.rpm}</b></td>
         <td><div class="prog" style="width:110px;height:7px;position:relative"><i style="margin-left:${100*n.rpm_bajo/max}%;width:${Math.max(3,100*(n.rpm_alto-n.rpm_bajo)/max)}%"></i></div><span class="hint">$${n.rpm_bajo}–$${n.rpm_alto}</span></td>
         <td class="num">${usd(n.por_millon)}</td><td class="num">$${n.cpm}</td><td class="num">${n.ingreso_mes_prom?usd(n.ingreso_mes_prom):"—"}</td>
         <td style="white-space:normal">${n.ejemplos.map(c=>`<a href="#" onclick="event.preventDefault();abrirCanal('${c.id}')" class="small">${esc(c.canal)}</a>`).join(", ") || `<span class="hint">—</span>`}</td>
-        <td><span class="chip ${n.fuente==="canales reales"?"up":""}">${esc(n.fuente)}</span></td></tr>`).join("")}</table></div></div>
+        <td><span class="chip ${n.con_canales?"up":""}">${esc(n.fuente)}</span></td></tr>`).join("")}</table></div></div>
     ${tip2("Para subir tu RPM dentro de un nicho: videos de 8+ minutos (más anuncios en medio), audiencia de EE. UU./Canadá/Europa, público adulto y publicar fuerte en octubre-diciembre, cuando los anunciantes pagan más.")}`;
     const top = N.slice(0, 16);
-    chart("rpmChart", {type:"bar", data:{labels:top.map(n=>n.nicho.length>28?n.nicho.slice(0,27)+"…":n.nicho), datasets:[{data:top.map(n=>n.rpm), backgroundColor:top.map(n=>n.fuente==="canales reales"?VERDE:GRIS)}]},
+    chart("rpmChart", {type:"bar", data:{labels:top.map(n=>n.nicho.length>28?n.nicho.slice(0,27)+"…":n.nicho), datasets:[{data:top.map(n=>n.rpm), backgroundColor:top.map(n=>n.con_canales?VERDE:GRIS)}]},
       options:{indexAxis:"y", plugins:{legend:{display:false}, tooltip:{callbacks:{label:i=>` RPM $${top[i.dataIndex].rpm} · ${usd(top[i.dataIndex].por_millon)} por millón · ${top[i.dataIndex].fuente}`}}},
         scales:{x:{grid:{color:GRID}, ticks:{callback:v=>"$"+v}}, y:{grid:{display:false}}},
         onClick:(e,els)=>{ if (els[0]) buscarNicho(top[els[0].index].nicho); }}});

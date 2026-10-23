@@ -5,6 +5,8 @@
 import json
 import mimetypes
 import threading
+import hmac
+import secrets
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, urlparse
@@ -13,6 +15,8 @@ from core import academia, alertas, bot, cerebro, exportar, llm, miniaturas, mon
 from core import youtube as yt
 from core.analisis import ligero
 from core.config import BASE, PUERTO, ajustes, buscar_clave, claves_youtube, guardar_ajustes, guardar_clave
+
+TOKEN = secrets.token_urlsafe(32)        # token de sesión: cambia cada vez que arranca el panel
 
 CLAVES = ["GEMINI_API_KEY", "GROQ_API_KEY", "FREELLMAPI_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY"]
 UI = BASE / "ui"
@@ -50,6 +54,25 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, data, code=200):
         self._send(json.dumps(data, ensure_ascii=False, default=str).encode("utf-8"), "application/json; charset=utf-8", code)
 
+    # ---------- seguridad: solo el propio panel puede pedir cambios ----------
+    def _host_valido(self) -> bool:
+        """Protege contra 'DNS rebinding': el Host debe ser el propio panel local."""
+        host = (self.headers.get("Host") or "").lower()
+        return host in {f"127.0.0.1:{self.server.server_port}", f"localhost:{self.server.server_port}"}
+
+    def _escritura_permitida(self) -> str | None:
+        """None si la petición viene del panel; si no, el motivo del rechazo."""
+        if not self._host_valido():
+            return "Host no permitido."
+        origen = self.headers.get("Origin")
+        if origen and origen.lower().rstrip("/") not in {f"http://127.0.0.1:{self.server.server_port}", f"http://localhost:{self.server.server_port}"}:
+            return "Origen no permitido."
+        if (self.headers.get("Content-Type") or "").split(";")[0].strip().lower() != "application/json":
+            return "Tipo de contenido no permitido."
+        if not hmac.compare_digest(self.headers.get("X-NF-Token") or "", TOKEN):
+            return "Token de sesión inválido. Recarga el panel."
+        return None
+
     def _body(self):
         n = int(self.headers.get("Content-Length") or 0)
         return json.loads(self.rfile.read(n) or b"{}")
@@ -65,8 +88,13 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         try:
+            if not self._host_valido():
+                return self._json({"error": "Host no permitido."}, 403)
             if u.path in ("/", "/index.html"):
-                self._send((UI / "index.html").read_bytes(), "text/html; charset=utf-8")
+                html = (UI / "index.html").read_text(encoding="utf-8").replace(
+                    "<head>", f'<head>\n<meta name="nf-token" content="{TOKEN}">', 1)
+                self._send(html.encode("utf-8"), "text/html; charset=utf-8",
+                           extra={"Cache-Control": "no-store", "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer"})
             elif u.path.startswith("/vendor/") or u.path.startswith("/img/"):
                 f = (UI / u.path.lstrip("/")).resolve()
                 if UI.resolve() not in f.parents or not f.is_file():
@@ -186,6 +214,9 @@ class Handler(BaseHTTPRequestHandler):
     # ---------- POST ----------
     def do_POST(self):  # noqa: N802
         u = urlparse(self.path)
+        motivo = self._escritura_permitida()
+        if motivo:                                   # se rechaza ANTES de leer o ejecutar nada
+            return self._json({"error": motivo}, 403)
         try:
             d = self._body()
             r = {"ok": True}

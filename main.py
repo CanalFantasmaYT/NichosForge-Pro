@@ -3,7 +3,10 @@
 Lo normal es usar el PANEL:   python main.py panel      (o doble clic en iniciar_panel.bat)
 """
 import argparse
+import os
 import sys
+
+os.environ.setdefault("OPENCV_LOG_LEVEL", "ERROR")   # sin la avalancha de avisos de OpenCV 5 en la consola
 
 try:
     import dotenv, requests  # noqa: F401,E401

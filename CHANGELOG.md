@@ -2,6 +2,15 @@
 
 All notable changes to this project. / Cambios importantes del proyecto.
 
+## [13] — Code review fixes / Correcciones de la revisión de código
+- **P1 · Security:** write endpoints now require a per-session token, local `Host`/`Origin` and `application/json` (CSRF / DNS rebinding). / **Seguridad**: token de sesión y validación de origen.
+- **P1 · Tracking windows:** a 24 h window is “measured” only with a snapshot near its start; long gaps become a labeled daily **average**, short history a labeled **projection**. / Ventanas de 24 h honestas.
+- **P2 · Labels:** “real” only for a fully measured month; projections are labeled as such; earnings and RPM always shown as **estimates**. / Etiquetas honestas.
+- **P2 · Monetization:** < 1,000 subscribers is no longer “confirmed not monetized”; ads and fan funding (expanded YPP from 500 subs) reported separately. / Monetización sin falsa certeza.
+- **P2 · Scheduler:** snapshot due-time is computed **per channel**. / Programador por canal.
+- OpenCV 5 warning flood silenced; face detectors are created once per worker thread and reused (faster). / Sin avalancha de avisos de OpenCV.
+- Regression tests in `tests/` run in CI. / Pruebas automáticas de cada hallazgo.
+
 ## [12] — Channel map, referent outliers, RPM by niche
 - 🎯 **My channel map**: English referents + direct and indirect Spanish competition, comparison and content gaps. / **Mapa de mi canal**.
 - 🚀 **Referent outliers** tab in Viral videos, with “Why did it work?”. / **Outliers de referentes**.

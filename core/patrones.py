@@ -179,7 +179,7 @@ def _hex(c):
 
 
 def _rasgos_imagen(contenido: bytes) -> dict:
-    from PIL import Image, ImageFilter, ImageStat
+    from PIL import Image, ImageFilter, ImageStat  # noqa: F401
     img = Image.open(io.BytesIO(contenido)).convert("RGB").resize((160, 90))
     hsv = img.convert("HSV")
     st = ImageStat.Stat(img.convert("L"))
@@ -228,9 +228,8 @@ def analizar_miniaturas(vids: list, max_n: int = 120) -> dict:
         except Exception:  # noqa: BLE001
             pass
         return v, None
-    from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=16) as ex:
-        res = [(v, m) for v, m in ex.map(bajar, elegidos) if m]
+    from .rostros import pool
+    res = [(v, m) for v, m in pool().map(bajar, elegidos) if m]
     if not res:
         return {"error": "No pude descargar las miniaturas (¿sin internet?)."}
     for v, m in res:

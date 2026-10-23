@@ -126,32 +126,60 @@ def ultima_foto() -> str | None:
     return max(ts) if ts else None
 
 
+def vencidos(ids: list | None = None) -> list:
+    """Canales seguidos cuya última foto tiene más de INTERVALO_HORAS (o que nunca tuvieron foto)."""
+    d = read_json_cache(FOTOS, {}) or {}
+    limite = _ahora() - timedelta(hours=INTERVALO_HORAS)
+    out = []
+    for cid in (ids if ids is not None else list(ids_seguidos())):
+        puntos = d.get(cid) or []
+        if not puntos or _t(puntos[-1]) <= limite:
+            out.append(cid)
+    return out
+
+
 def toca_foto() -> bool:
-    u = ultima_foto()
-    if not u:
-        return True
-    return (_ahora() - datetime.fromisoformat(u)).total_seconds() >= INTERVALO_HORAS * 3600
+    """¿Hay al menos un canal vencido? (Una foto reciente de un canal ya no posterga a los demás.)"""
+    return bool(vencidos())
 
 
 # ---------------- métricas ----------------
 
 def _ventana(puntos: list, dias: float) -> dict | None:
-    """Visitas ganadas en los últimos `dias`. Si hay menos historial, se proyecta y se marca como proyectado."""
+    """Visitas ganadas en los últimos `dias` hasta la última foto.
+
+    Solo es una MEDICIÓN («medido») si hay una foto cerca del inicio de la ventana (tolerancia: 15 % de la ventana,
+    mínimo 3 h). Si no:
+      · «proyectado»: hay menos historial que la ventana → se extrapola lo observado;
+      · «promedio»:   la foto más cercana está mucho antes (p. ej. el panel estuvo apagado) → promedio diario del hueco.
+    Las dos últimas son aproximaciones y siempre se marcan como tales.
+    """
     if len(puntos) < 2:
         return None
     ult = puntos[-1]
-    objetivo = _t(ult) - timedelta(days=dias)
-    # la foto más cercana al inicio de la ventana (sin pasarse de la última)
-    base = min(puntos[:-1], key=lambda p: abs((_t(p) - objetivo).total_seconds()))
-    span = (_t(ult) - _t(base)).total_seconds() / 86400
-    if span < 0.2:                                         # menos de ~5 horas: aún no es medible
+    t_ult = _t(ult)
+    objetivo = t_ult - timedelta(days=dias)
+    tol = max(timedelta(hours=3), timedelta(days=dias * 0.15))
+    previos = puntos[:-1]
+    cercanos = [p for p in previos if abs(_t(p) - objetivo) <= tol]
+    if cercanos:
+        base, tipo = min(cercanos, key=lambda p: abs(_t(p) - objetivo)), "medido"
+    else:
+        despues = [p for p in previos if _t(p) > objetivo]
+        antes = [p for p in previos if _t(p) <= objetivo]
+        if despues:
+            base, tipo = despues[0], "proyectado"              # historial más corto que la ventana
+        else:
+            base, tipo = antes[-1], "promedio"                 # hueco largo entre fotos
+    span = (t_ult - _t(base)).total_seconds() / 86400
+    if span < 0.2:                                             # menos de ~5 horas: aún no es medible
         return None
-    ganadas = max(0, ult["v"] - base["v"])          # YouTube a veces corrige visitas hacia abajo: nunca negativo
+    ganadas = max(0, ult["v"] - base["v"])                     # YouTube a veces corrige visitas hacia abajo: nunca negativo
     subs = (ult.get("s", 0) - base.get("s", 0)) if "s" in ult and "s" in base else None
-    proyectado = span < dias * 0.85
-    factor = dias / span if proyectado else 1
+    factor = 1 if tipo == "medido" else dias / span
     return {"ganadas": round(ganadas * factor), "subs": round(subs * factor) if subs is not None else None,
-            "videos": ult.get("n", 0) - base.get("n", 0), "dias_medidos": round(span, 1), "proyectado": proyectado}
+            "videos": ult.get("n", 0) - base.get("n", 0), "dias_medidos": round(span, 1), "tipo": tipo,
+            "proyectado": tipo != "medido", "hasta": ult["t"]}
 
 
 def metricas(cid: str) -> dict | None:
@@ -159,7 +187,9 @@ def metricas(cid: str) -> dict | None:
     if not puntos:
         return None
     span_total = (_t(puntos[-1]) - _t(puntos[0])).total_seconds() / 86400
+    antig = (_ahora() - _t(puntos[-1])).total_seconds() / 3600
     out = {"fotos": len(puntos), "desde": puntos[0]["t"], "ultima": puntos[-1]["t"], "dias": round(span_total, 1),
+           "horas_sin_foto": round(antig, 1), "desactualizado": antig > INTERVALO_HORAS * 2,
            "visitas_totales": puntos[-1]["v"], "suscriptores": puntos[-1].get("s")}
     out["d1"], out["d7"], out["d30"] = _ventana(puntos, 1), _ventana(puntos, 7), _ventana(puntos, 30)
     # ritmo diario real y visitas al mes (mejor ventana disponible)
@@ -170,6 +200,7 @@ def metricas(cid: str) -> dict | None:
         out["mes"] = round(mejor["ganadas"] * 30 / base_dias)
         out["mes_medido"] = mejor["dias_medidos"]
         out["mes_proyectado"] = mejor["proyectado"]
+        out["mes_tipo"] = mejor["tipo"] if base_dias == 30 else ("proyectado" if mejor["tipo"] == "medido" else mejor["tipo"])
     # crecimiento: últimos 7 días contra los 7 anteriores (si hay 14 días de datos)
     if span_total >= 12:
         previos = [p for p in puntos if _t(p) <= _t(puntos[-1]) - timedelta(days=7)]
@@ -199,18 +230,24 @@ def enriquecer(a: dict) -> dict:
         mes = m["mes"]
         out["visitas_mes_estimadas"] = a.get("visitas_mes")
         out["visitas_mes"] = mes
-        out["metodo_mes"] = (f"REAL: medido en {m['mes_medido']} días" + (" (proyectado a 30)" if m["mes_proyectado"] else ""))
+        mes_real = m.get("mes_tipo") == "medido"
+        out["metodo_mes"] = ("REAL: medido en los últimos 30 días" if mes_real else
+                             f"PROMEDIO de {m['mes_medido']} días entre fotos, llevado a 30 días" if m.get("mes_tipo") == "promedio" else
+                             f"PROYECCIÓN mensual desde {m['mes_medido']} días medidos")
         rpm = a.get("rpm") or 0
         out["ingreso_mes"] = round(mes / 1000 * rpm)
         out["ingreso_mes_bajo"] = round(mes / 1000 * (a.get("rpm_bajo") or 0))
         out["ingreso_mes_alto"] = round(mes / 1000 * (a.get("rpm_alto") or 0))
         out["ingreso_anio"] = round(mes * 12 / 1000 * rpm)
-        out["real"] = True
+        out["real"] = mes_real                       # mes completo MEDIDO
+        out["medido"] = True                         # hay mediciones reales (aunque el mes sea proyección)
+        out["ingreso_estimado"] = True               # la ganancia SIEMPRE es estimada (visitas × RPM estimado)
         aj = ajustes()
         mes_min = int(aj["visitas_mes_min"])
         if a.get("checks"):
             checks = [list(c) for c in a["checks"]]
-            checks[1] = [f"{mes_min:,} visitas al mes o más (medido)".replace(",", "."), mes >= mes_min]
+            etiqueta = "medido" if mes_real else f"proyección de {m['mes_medido']} días"
+            checks[1] = [f"{mes_min:,} visitas al mes o más ({etiqueta})".replace(",", "."), mes >= mes_min]
             out["checks"] = checks
             out["es_referente"] = checks[0][1] and checks[1][1] and checks[2][1] and a.get("idioma") == "en"
             if out["es_referente"]:
@@ -242,8 +279,9 @@ def iniciar_programador():
         while True:
             try:
                 from .config import claves_youtube
-                if claves_youtube() and ids_seguidos() and toca_foto():
-                    tomar_foto()
+                pendientes = vencidos() if claves_youtube() else []
+                if pendientes:
+                    tomar_foto(pendientes)
                 _radar_auto()
                 from . import alertas
                 if ajustes().get("alertas", True) and claves_youtube() and alertas.toca_revision():

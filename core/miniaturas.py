@@ -28,7 +28,8 @@ _local = threading.local()
 
 def disponible() -> bool:
     try:
-        import cv2  # noqa: F401
+        from .rostros import cv
+        cv()
         import numpy  # noqa: F401
         return True
     except ImportError:
@@ -38,7 +39,8 @@ def disponible() -> bool:
 # ---------------- huella visual ----------------
 
 def _bajar(vid: str):
-    import cv2
+    from .rostros import cv
+    cv2 = cv()
     import numpy as np
     if not hasattr(_local, "s"):
         _local.s = requests.Session()
@@ -59,7 +61,8 @@ def _bajar(vid: str):
 
 def _letras(gris):
     """Candidatas a letra con MSER: regiones estables, de tamaño de letra y proporción de letra."""
-    import cv2
+    from .rostros import cv
+    cv2 = cv()
     h, w = gris.shape
     mser = cv2.MSER_create(5, 30, int(0.04 * h * w))
     cajas = []
@@ -82,7 +85,8 @@ def _letras(gris):
 
 def _texto(gris, bgr):
     """Texto: filas de 3 o más letras alineadas y de altura parecida (las texturas casi nunca hacen eso)."""
-    import cv2
+    from .rostros import cv
+    cv2 = cv()
     import numpy as np
     h, w = gris.shape
     letras = sorted(_letras(gris), key=lambda b: b[0])
@@ -131,7 +135,8 @@ def _texto(gris, bgr):
 
 def _marcas_rojas(hsv) -> int:
     """Flechas o círculos rojos: formas rojas grandes pero huecas (poco relleno). Una camiseta roja no cuenta."""
-    import cv2
+    from .rostros import cv
+    cv2 = cv()
     import numpy as np
     h, w = hsv.shape[:2]
     rojo = (((hsv[..., 0] <= 8) | (hsv[..., 0] >= 172)) & (hsv[..., 1] > 170) & (hsv[..., 2] > 130)).astype(np.uint8)
@@ -148,7 +153,8 @@ def _marcas_rojas(hsv) -> int:
 
 def huella(img) -> dict:
     """Vector visual + rasgos legibles de una miniatura (320x180 BGR)."""
-    import cv2
+    from .rostros import cv
+    cv2 = cv()
     import numpy as np
     peq = cv2.resize(img, (160, 90))
     lab = cv2.cvtColor(peq, cv2.COLOR_BGR2LAB).astype(np.float32)
@@ -260,8 +266,8 @@ def agregar(videos: list, fuente: str = "", max_n: int = 400, al_avanzar=None) -
                          "publicado": v.get("publicado"), "fuente": fuente, "fecha": datetime.now().isoformat(timespec="seconds"),
                          "idioma": v.get("idioma")}
     t0 = time.time()
-    with ThreadPoolExecutor(max_workers=16) as ex:
-        nuevos = dict(r for r in ex.map(uno, pend) if r)
+    from .rostros import pool
+    nuevos = dict(r for r in pool().map(uno, pend) if r)
     with _lock:
         d = read_json(CORPUS, {}) or {}
         d.update(nuevos)

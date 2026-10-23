@@ -25,6 +25,8 @@ jobs:
         run: python -m compileall -q main.py server.py core
       - name: Import every module
         run: python -c "import core.config, core.youtube, core.analisis, core.clasificador, core.cerebro, core.motor, core.rostros, core.miniaturas, core.seguimiento, core.alertas, core.monetizado, core.bot, server; print('ok')"
+      - name: Regression tests (code review findings)
+        run: python -m unittest discover -s tests -v
       - name: Niche classifier sanity check
         run: |
           python -c "from core import clasificador as c; assert c.clasificar('The Untold Story of the Vanderbilt Family Fortune')[0]=='Old money y lujo'; assert c.clasificar('3 True Scary Stories From the Deep Woods')[0]=='Terror y paranormal'; print('classifier ok')"

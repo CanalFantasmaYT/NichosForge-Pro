@@ -63,8 +63,11 @@ def ranking_canales(n: int = 12, canales: list | None = None) -> list:
              + _c((a.get("rpm") or 0) / 8) * 10 + (5 if a.get("real") and (a.get("crecimiento") or 0) > 0 else 0)
              + (8 if rv == "sin_rostro" else 0))
         razones = []
+        crec = f" ({a['crecimiento']:+d}% semanal)" if a.get("crecimiento") is not None else ""
         if a.get("real"):
-            razones.append(f"{_n(vm)} visitas/mes medidas de verdad" + (f" ({a['crecimiento']:+d}% semanal)" if a.get("crecimiento") is not None else ""))
+            razones.append(f"{_n(vm)} visitas/mes medidas en 30 días{crec}")
+        elif a.get("medido"):
+            razones.append(f"~{_n(vm)} visitas/mes (proyección de lo medido){crec}")
         else:
             razones.append(f"~{_n(vm)} visitas/mes (estimado)")
         if edad <= 365:
@@ -215,7 +218,7 @@ def fase_usuario() -> dict:
     return {"fase": FASES[idx][1], "consejo": FASES[idx][2], "canales": len(mis), "ganancia_mes": total,
             "visitas_mes": sum(c.get("visitas_mes") or 0 for c in mis), "medido_real": any(c.get("real") for c in mis),
             "detalle": [{"canal": c["canal"], "suscriptores": c.get("suscriptores"), "visitas_mes": c.get("visitas_mes"),
-                         "ganancia_mes": c.get("ingreso_mes"), "nicho": c.get("nicho"), "real": bool(c.get("real"))} for c in mis]}
+                         "ganancia_mes_estimada": c.get("ingreso_mes"), "nicho": c.get("nicho"), "visitas_mes_real": bool(c.get("real"))} for c in mis]}
 
 
 def contexto_experto() -> dict:
@@ -280,7 +283,7 @@ def respuesta_sin_ia(q: str) -> str | None:
 # ---------------- 💵 nichos con RPM más alto ----------------
 
 def rpm_nichos() -> list:
-    """RPM por nicho: el de los canales reales analizados (en inglés, con su país, audiencia y duración) o, si aún no hay
+    """RPM ESTIMADO por nicho: mediana del RPM estimado de los canales analizados (CPM del nicho × país, audiencia y duración) o, si aún no hay
     canales, el de la tabla de CPM con un canal típico (EE. UU., videos largos)."""
     from . import clasificador as clf
     aj = ajustes()
@@ -299,15 +302,15 @@ def rpm_nichos() -> list:
         base = cpm * reparto * monet * 1.25                     # canal típico de EE. UU. con videos de 10-15 min
         if len(en) >= 2:
             rpms = sorted(a["rpm"] for a in en)
-            rpm, bajo, alto, fuente = statistics.median(rpms), rpms[0], rpms[-1], "canales reales"
+            rpm, bajo, alto, fuente = statistics.median(rpms), rpms[0], rpms[-1], f"estimado con {len(en)} canales"
         elif en:
-            rpm, bajo, alto, fuente = en[0]["rpm"], en[0].get("rpm_bajo", en[0]["rpm"] * .7), en[0].get("rpm_alto", en[0]["rpm"] * 1.3), "1 canal real"
+            rpm, bajo, alto, fuente = en[0]["rpm"], en[0].get("rpm_bajo", en[0]["rpm"] * .7), en[0].get("rpm_alto", en[0]["rpm"] * 1.3), "estimado con 1 canal"
         else:
             rpm, bajo, alto, fuente = base, base * .7, base * 1.3, "tabla de CPM"
         vm = _prom([a.get("visitas_mes") for a in en])
         mejores = sorted(en, key=lambda a: -(a.get("ingreso_mes") or 0))[:3]
         filas.append({"nicho": nicho, "rpm": round(rpm, 2), "rpm_bajo": round(bajo, 2), "rpm_alto": round(alto, 2), "cpm": round(cpm, 2),
-                      "por_millon": round(rpm * 1000), "fuente": fuente, "canales": len(cs), "visitas_mes_prom": round(vm) if vm else None,
+                      "por_millon": round(rpm * 1000), "fuente": fuente, "con_canales": bool(en), "estimado": True, "canales": len(cs), "visitas_mes_prom": round(vm) if vm else None,
                       "ingreso_mes_prom": round(_prom([a.get("ingreso_mes") for a in en]) or 0),
                       "ejemplos": [{"id": a["id"], "canal": a["canal"], "rpm": a["rpm"], "ingreso_mes": a.get("ingreso_mes")} for a in mejores],
                       "aprendido": nicho not in clf.TAX})

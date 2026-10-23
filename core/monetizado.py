@@ -4,8 +4,10 @@ Ningún dato público dice al 100 % si un canal está en el Programa de Socios d
 YouTube Studio, y desde 2021 YouTube muestra anuncios también en canales que NO son socios. Por eso este módulo solo
 dice «confirmado» cuando hay una PRUEBA segura y, si no, da una probabilidad con sus motivos:
 
-  ✅ Confirmado monetizado  → botón «Unirse» (membresías) o «Super Thanks»: solo existen en canales del YPP.
-  ⛔ Confirmado NO          → menos de 1.000 suscriptores: no cumple el mínimo para ganar con anuncios.
+  ✅ Confirmado socio       → botón «Unirse» (membresías) o «Super Thanks»: solo existen en canales del YPP
+                              (que puede ser el nivel ampliado, solo con funciones de fans; los anuncios se indican aparte).
+  ⛔ Muy probable NO        → menos de 500 suscriptores (mínimo de cualquier nivel del Programa de Socios).
+  ⏳ Sin anuncios           → 500-999 suscriptores: sin anuncios, pero podría tener funciones de fans (YPP ampliado).
   🟢 Muy probable           → cumple requisitos (1.000 subs + ~4.000 h o 10M visitas en Shorts) y señal de anuncios activa.
   🟡 Elegible sin confirmar → cumple requisitos, sin prueba directa.
   🟠 Aún no cumple          → 1.000 subs pero pocas horas de reproducción estimadas.
@@ -106,8 +108,9 @@ def evaluar(a: dict, pagina: dict | None = None) -> dict:
     if subs is None:
         senales.append(("neutral", "El canal oculta su número de suscriptores."))
     else:
-        senales.append(("bien" if subs >= 1000 else "mal", f"{subs:,} suscriptores (el mínimo para anuncios es 1.000).".replace(",", ".")))
-    senales.append(("bien" if cumple_horas else "neutral", f"≈{req['horas_12m']:,} horas de reproducción estimadas en 12 meses (mínimo 4.000).".replace(",", ".")))
+        senales.append(("bien" if subs >= 1000 else "neutral" if subs >= 500 else "mal",
+                        f"{subs:,} suscriptores (anuncios: mínimo 1.000 · funciones de fans: mínimo 500).".replace(",", ".")))
+    senales.append(("bien" if cumple_horas else "neutral", f"≈{req['horas_12m']:,} horas de reproducción ESTIMADAS en 12 meses (mínimo 4.000; es una estimación, no una prueba).".replace(",", ".")))
     if req["shorts_90d"]:
         senales.append(("bien" if cumple_shorts else "neutral", f"≈{req['shorts_90d']:,} visitas de Shorts en 90 días (mínimo 10 millones).".replace(",", ".")))
     p = pagina or {}
@@ -123,24 +126,32 @@ def evaluar(a: dict, pagina: dict | None = None) -> dict:
     elif pagina is not None:
         senales.append(("neutral", "No se pudo leer la página pública del canal."))
 
+    subs_n = subs if subs is not None else -1
+    cumple_anuncios = subs_n >= 1000 and (cumple_horas or cumple_shorts)          # estimación, no prueba
     if p.get("unirse") or p.get("super_thanks"):
-        v, conf, titulo = "si", "confirmado", "Monetizado (confirmado)"
-        motivo = "Tiene funciones que YouTube solo da a canales del Programa de Socios."
-    elif subs is not None and subs < 1000:
-        v, conf, titulo = "no", "confirmado", "No monetizado (confirmado)"
-        motivo = "No llega a 1.000 suscriptores, el mínimo para ganar dinero con anuncios."
+        v, conf, titulo = "si", "confirmado", "En el Programa de Socios (confirmado)"
+        anuncios = ("muy probablemente activos" if cumple_anuncios else
+                    "sin confirmar (con menos de 1.000 suscriptores solo tendría funciones de fans)" if 0 <= subs_n < 1000 else "sin confirmar")
+        motivo = f"Tiene funciones que YouTube solo da a socios. Anuncios: {anuncios}."
     elif p.get("anuncios") is False:
-        v, conf, titulo = "no", "alta", "Probablemente no monetizado"
+        v, conf, titulo = "no", "alta", "Probablemente sin monetización activa"
         motivo = "La página pública indica la monetización desactivada."
-    elif (subs or 0) >= 1000 and (cumple_horas or cumple_shorts) and p.get("anuncios") is True:
-        v, conf, titulo = "si", "alta", "Muy probablemente monetizado"
-        motivo = "Cumple los requisitos y la página muestra anuncios activos."
-    elif (subs or 0) >= 1000 and (cumple_horas or cumple_shorts):
-        v, conf, titulo = "probable", "media", "Elegible (sin confirmar)"
-        motivo = "Cumple los requisitos del Programa de Socios, pero no hay una prueba directa."
-    elif (subs or 0) >= 1000:
-        v, conf, titulo = "aun_no", "media", "Aún no cumple las horas"
-        motivo = "Tiene 1.000 suscriptores, pero las horas de reproducción estimadas no llegan a 4.000."
+    elif 0 <= subs_n < 500:
+        v, conf, titulo = "no", "alta", "Muy probablemente no monetizado"
+        motivo = "No llega a 500 suscriptores, el mínimo de cualquier nivel del Programa de Socios."
+    elif 500 <= subs_n < 1000:
+        v, conf, titulo = "aun_no", "media", "Sin anuncios (muy probable)"
+        motivo = ("Con 500-999 suscriptores no puede tener anuncios, pero podría tener funciones de fans "
+                  "(membresías, Super Thanks) si entró al Programa de Socios ampliado.")
+    elif cumple_anuncios and p.get("anuncios") is True:
+        v, conf, titulo = "probable", "alta", "Muy probablemente monetizado"
+        motivo = "Según la estimación cumple los requisitos y la página muestra anuncios activos (que también pueden ser de YouTube)."
+    elif cumple_anuncios:
+        v, conf, titulo = "probable", "media", "Elegible según la estimación (sin confirmar)"
+        motivo = "Por suscriptores y horas ESTIMADAS cumpliría los requisitos, pero no hay una prueba directa."
+    elif subs_n >= 1000:
+        v, conf, titulo = "desconocido", "baja", "Sin confirmar"
+        motivo = "Las horas de reproducción estimadas quedan por debajo de 4.000, pero es una estimación: no prueba que no esté monetizado."
     else:
         v, conf, titulo = "desconocido", "baja", "No se puede saber"
         motivo = "Faltan datos públicos (suscriptores ocultos y sin pruebas en la página)."

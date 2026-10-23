@@ -7,8 +7,8 @@ from . import motor
 
 COLS_CANAL = [("canal", "Canal"), ("url", "Link"), ("rol", "Rol"), ("idioma", "Idioma"), ("pais", "País"),
               ("categoria", "Categoría"), ("score", "Puntaje"), ("suscriptores", "Suscriptores"),
-              ("visitas_totales", "Visitas totales"), ("visitas_mes", "Visitas/mes"), ("metodo_mes", "Cómo se midió"), ("visitas_7d", "Visitas 7 días (real)"),
-              ("visitas_30d", "Visitas 30 días (real)"), ("crecimiento", "Crecimiento semanal %"), ("videos", "Videos"),
+              ("visitas_totales", "Visitas totales"), ("visitas_mes", "Visitas/mes"), ("metodo_mes", "Cómo se midió"), ("visitas_7d", "Visitas 7 días (medidas)"),
+              ("visitas_30d", "Visitas 30 días (medidas)"), ("crecimiento", "Crecimiento semanal %"), ("videos", "Videos"),
               ("edad_dias", "Edad (días)"), ("creado", "Creado"), ("promedio", "Visitas promedio"), ("mediana", "Mediana"),
               ("techo", "Techo"), ("techo_titulo", "Video techo"), ("piso", "Piso"), ("likes_prom", "Me gusta prom."),
               ("comentarios_prom", "Comentarios prom."), ("interaccion", "Interacción %"), ("vistas_por_sub", "Visitas/sub"),

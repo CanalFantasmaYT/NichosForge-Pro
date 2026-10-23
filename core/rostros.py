@@ -35,13 +35,39 @@ MISMA_PERSONA = 0.40          # similitud coseno de SFace (OpenCV recomienda 0.3
 _local = threading.local()
 _lock = threading.RLock()
 _descarga = {"estado": "pendiente", "error": ""}
+_CV = {"listo": False}
+_POOL = {"p": None}
+
+
+def cv():
+    """Importa OpenCV una vez y baja su nivel de registro: OpenCV 5 avisa (WARN) cada vez que se crea un modelo
+    («Targets are not supported by the new graph engine») aunque funciona bien. Los errores reales se siguen viendo."""
+    import cv2
+    if not _CV["listo"]:
+        try:
+            cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)
+        except Exception:  # noqa: BLE001
+            try:
+                cv2.setLogLevel(2)
+            except Exception:  # noqa: BLE001
+                pass
+        _CV["listo"] = True
+    return cv2
+
+
+def pool() -> ThreadPoolExecutor:
+    """Hilos de imágenes que se REUTILIZAN: cada hilo crea su detector una sola vez (antes se recreaba en cada tanda)."""
+    with _lock:
+        if _POOL["p"] is None:
+            _POOL["p"] = ThreadPoolExecutor(max_workers=12, thread_name_prefix="nf-img")
+        return _POOL["p"]
 
 
 # ---------------- modelos ----------------
 
 def opencv_ok() -> bool:
     try:
-        import cv2  # noqa: F401
+        cv()
         return True
     except ImportError:
         return False
@@ -78,14 +104,14 @@ def descargar_reconocedor() -> bool:
 
 
 def _detector():
-    import cv2
+    cv2 = cv()
     if not hasattr(_local, "det"):
         _local.det = cv2.FaceDetectorYN.create(str(YUNET), "", (320, 320), 0.75, 0.3, 20)
     return _local.det
 
 
 def _reconocedor():
-    import cv2
+    cv2 = cv()
     if not SFACE.exists():
         return None
     if not hasattr(_local, "rec"):
@@ -96,7 +122,7 @@ def _reconocedor():
 # ---------------- imágenes ----------------
 
 def _bajar(url: str):
-    import cv2
+    cv2 = cv()
     import numpy as np
     if not hasattr(_local, "s"):
         _local.s = requests.Session()
@@ -164,8 +190,7 @@ def verificar(a: dict, max_videos: int = 6) -> dict:
         caras = _caras(img)
         return {"vid": vid, "tipo": tipo, "url": url, "caras": [{"area": c["area"], "huella": _huella(img, c)} for c in caras[:4]]}
 
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        res = [r for r in ex.map(procesar, tareas) if r]
+    res = [r for r in pool().map(procesar, tareas) if r]
     if not res:
         return {"veredicto": "sin_verificar", "motivo": "No pude descargar las imágenes (¿sin internet?)."}
     fotogramas = [r for r in res if r["tipo"] == "fotograma"]

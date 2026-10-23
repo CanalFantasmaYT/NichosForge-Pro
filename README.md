@@ -38,12 +38,12 @@ It comes with **Nichi**, a ninja mascot and AI strategist that reasons with your
 | 🔎 | **Explore** | Searches niches by phrase (English = referents, Spanish = competition) and analyzes every channel: type, role, health, audience, views, earnings. |
 | 🎯 | **My channel map** | Enter your channel and get **English referents**, your **direct competition** (same niche in Spanish) and **indirect competition** (neighbor niches / overlapping topics), plus content gaps. |
 | 🏆 | **Niche opportunity index** | One 0-100 score: demand in English, competition in Spanish, niche RPM, young growing channels and trend (up/down). Adjustable weights. |
-| 💵 | **Highest-RPM niches** | Ranking by creator revenue per 1,000 views, using the real RPM of the analyzed channels in each niche. |
+| 💵 | **Highest-RPM niches** | Ranking by *estimated* creator revenue per 1,000 views (niche CPM × each analyzed channel's country, audience and video length). |
 | 🚀 | **Referent outliers** | The videos that beat their own channel the most among your referents — with “Why did it work?” analysis. |
-| 📈 | **Real view tracking** | Snapshots every 6 h → views actually gained in 24 h / 7 d / 30 d and weekly growth. Replaces estimates everywhere. |
+| 📈 | **Real view tracking** | Snapshots every 6 h → views gained in 24 h / 7 d / 30 d and weekly growth. Each number says whether it is **measured**, a **projection** or an **average** of a gap. |
 | 🎨 | **Thumbnail patterns** | Local computer vision fingerprints each thumbnail (face, text, colors, arrows, split screen), groups them into named patterns and ranks what is viral **now**. “Similar” search from any thumbnail. |
 | 👁 | **Faceless verification** | Looks at the thumbnail and 3 frames inside each video **on your PC** (OpenCV YuNet + SFace) to confirm whether the same person appears on camera. |
-| 💰 | **Monetization checker** | Says “confirmed” only with hard proof (Join / Super Thanks buttons, or < 1,000 subscribers); otherwise gives a probability with reasons. |
+| 💰 | **Monetization checker** | “Confirmed” only with direct proof on the channel page (Join / Super Thanks → Partner Program). Ads and fan-funding are reported separately; otherwise a probability with reasons. |
 | 🔔 | **Automatic alerts** | Daily check of your channels and followed niches: new outliers and young channels that explode. Desktop notifications. |
 | 🧬 | **Patterns** | What repeats in winning videos: title formulas, title types, repeated ideas across channels, tags and SEO. |
 | 🏷 | **Niche classifier** | Channel-first classification with weighted rules, tie-breakers, an AI review of doubtful channels and a local model that learns from your corrections. |
@@ -143,6 +143,7 @@ Everything else (CPM per niche, country factors, alert thresholds, theme…) is 
 
 - **No framework, no database**: Python standard library HTTP server + JSON files with an in-memory cache.
 - **Local-first**: your data and keys never leave your machine (except calls to YouTube and to the AI provider you choose).
+- **Local security**: every write request needs a per-session token embedded in the panel, a local `Host`/`Origin` and `application/json`; requests from other websites are rejected (CSRF / DNS-rebinding protection).
 - **Background tasks**: face verification, thumbnail cataloging and alerts run in background threads and never block new searches.
 
 ## Project structure
@@ -163,8 +164,8 @@ nichosforge-pro/
 
 ## Accuracy, limits and honest notes
 
-- **Estimates vs. real data**: monthly views and earnings are estimates until the real tracking has at least one day of snapshots (marked “real” ✓ afterwards). RPM/CPM are approximations by niche, country, audience, video length and season.
-- **Monetization**: no public data says with 100% certainty whether a channel is in the YouTube Partner Program. The checker only says “confirmed” with hard proof; otherwise it reports a probability.
+- **Estimates vs. measured data**: monthly views are labeled **real** only after 30 measured days; before that they are a **projection** (“proy.”) or an **estimate** (“est.”). **Earnings and RPM are always estimates** (niche CPM × configured factors), never observed revenue.
+- **Monetization**: no public data says with certainty whether a channel earns money. “Confirmed” requires direct proof (Join / Super Thanks), which proves Partner Program membership — possibly the expanded tier (fan funding from 500 subscribers) without ads. Estimated watch hours are not proof.
 - **Faceless detection**: uses public thumbnails and auto-generated frames; recurring celebrities in documentary niches may be flagged as “doubtful”.
 - **Niche classifier**: ~100% at channel level in our tests; individual titles can be ambiguous (the channel's niche is inherited).
 

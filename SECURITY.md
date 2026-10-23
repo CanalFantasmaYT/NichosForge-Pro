@@ -8,6 +8,7 @@
 
 ## Local server / Servidor local
 - The panel listens on `127.0.0.1` only (not reachable from your network). Do not expose port 8767 to the internet.
+- Every write request must carry the per-session token embedded in the panel page, a local `Host`/`Origin` header and `Content-Type: application/json`. Requests from other websites are rejected with HTTP 403 before anything runs.
 - El panel solo escucha en `127.0.0.1`. No expongas el puerto 8767 a internet.
 
 ## Reporting a vulnerability / Reportar una vulnerabilidad

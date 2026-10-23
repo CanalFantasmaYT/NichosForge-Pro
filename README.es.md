@@ -39,12 +39,12 @@ Incluye a **Nichi**, una mascota ninja que hace de estratega con IA: razona con 
 | 🔎 | **Explorar** | Busca nichos por frases (en inglés encuentras referentes; en español, tu competencia) y analiza cada canal: tipo, rol, salud, audiencia, visitas y ganancias. |
 | 🎯 | **Mapa de mi canal** | Pones tu canal y obtienes tus **referentes en inglés**, tu **competencia directa** (mismo nicho en español) y tu **competencia indirecta** (nichos vecinos o temas que se cruzan), con tus huecos de contenido. |
 | 🏆 | **Índice de oportunidad** | Un puntaje de 0 a 100 por nicho que combina demanda en inglés, competencia en español, RPM, canales jóvenes que crecen y tendencia. Los pesos se pueden ajustar. |
-| 💵 | **Nichos con RPM más alto** | Ranking por lo que gana el creador cada 1.000 visitas, con el RPM real de los canales analizados. |
+| 💵 | **Nichos con RPM más alto** | Ranking por lo que gana el creador cada 1.000 visitas, *estimado* con el CPM del nicho y el país, la audiencia y la duración de cada canal analizado. |
 | 🚀 | **Outliers de referentes** | Los videos que más superan a su propio canal entre tus referentes, con el análisis «¿Por qué funcionó?». |
-| 📈 | **Seguimiento real** | Una "foto" cada 6 h para medir las visitas reales de 24 h, 7 días y 30 días y el crecimiento semanal. Reemplaza a las estimaciones. |
+| 📈 | **Seguimiento real** | Una "foto" cada 6 h para medir las visitas de 24 h, 7 días y 30 días y el crecimiento semanal. Cada cifra indica si es **medida**, una **proyección** o un **promedio** de un hueco. |
 | 🎨 | **Patrones de miniatura** | Reconoce en tu PC el diseño de cada miniatura (cara, texto, colores, flechas, pantalla dividida), agrupa las parecidas en patrones con nombre y ordena lo que es viral **ahora**. Puedes buscar parecidas desde cualquier miniatura. |
 | 👁 | **Sin rostro verificado** | Mira en tu PC la miniatura y 3 fotogramas de cada video (OpenCV, con YuNet y SFace) para confirmar si la misma persona sale a cámara. |
-| 💰 | **Verificador de monetización** | Dice «confirmado» solo con una prueba segura (botón Unirse o Super Thanks, o menos de 1.000 suscriptores). Si no, da una probabilidad con sus motivos. |
+| 💰 | **Verificador de monetización** | Dice «confirmado» solo con una prueba directa en la página del canal (Unirse o Super Thanks → Programa de Socios). Indica por separado anuncios y funciones de fans; si no hay prueba, da una probabilidad con sus motivos. |
 | 🔔 | **Alertas automáticas** | Revisa cada día tus canales y nichos seguidos y te avisa de outliers nuevos y de canales jóvenes que explotan. |
 | 🧬 | **Patrones** | Lo que se repite en los videos ganadores: fórmulas y tipos de título, ideas repetidas entre canales, etiquetas y SEO. |
 | 🏷 | **Clasificador de nichos** | Clasifica primero el canal, usa reglas con pesos, la IA revisa solo los dudosos y un modelo local aprende de tus correcciones. |
@@ -124,6 +124,7 @@ Todo lo demás (CPM por nicho, factores por país, umbrales de alertas, tema, et
 
 - **Sin frameworks ni base de datos:** usa el servidor HTTP de la biblioteca estándar de Python y archivos JSON con caché en memoria.
 - **Todo en tu PC:** tus datos y tus claves solo salen hacia YouTube y hacia el proveedor de IA que elijas.
+- **Seguridad local:** toda escritura exige un token de sesión incluido en el panel, un `Host`/`Origin` local y `application/json`. Las peticiones de otras webs se rechazan (protección contra CSRF y DNS rebinding).
 - **Tareas de fondo:** la verificación de rostros, el catálogo de miniaturas y las alertas corren en segundo plano y no bloquean nuevas búsquedas.
 - La arquitectura completa (qué hace cada módulo de `core/`) está en el [README en inglés](README.md#how-it-works).
 
@@ -145,8 +146,8 @@ nichosforge-pro/
 
 ## Precisión, límites y notas honestas
 
-- **Estimado y real:** las visitas y ganancias mensuales son estimaciones hasta que el seguimiento real tiene al menos un día de fotos. Desde ese momento llevan la marca «real» ✓. El RPM y el CPM son aproximaciones por nicho, país, audiencia, duración de los videos y temporada.
-- **Monetización:** ningún dato público dice al 100 % si un canal está en el Programa de Socios de YouTube. El verificador solo dice «confirmado» con una prueba segura; si no, informa una probabilidad.
+- **Estimado, proyectado y real:** las visitas al mes solo llevan la marca **real** con 30 días medidos; antes son una **proyección** («proy.») o una **estimación** («est.»). **Las ganancias y el RPM siempre son estimaciones** (CPM del nicho × factores), nunca ingresos observados.
+- **Monetización:** ningún dato público dice con certeza si un canal gana dinero. «Confirmado» exige una prueba directa (Unirse o Super Thanks), que demuestra que está en el Programa de Socios, quizá en el nivel ampliado (funciones de fans desde 500 suscriptores) y sin anuncios. Las horas estimadas no son una prueba.
 - **Sin rostro:** usa las miniaturas y los fotogramas públicos. En nichos de documentales, un famoso que aparece en muchos videos puede salir como «dudoso».
 - **Nichos:** en nuestras pruebas, la clasificación por canal acierta casi siempre. Un título suelto puede ser ambiguo, por eso cada video hereda el nicho de su canal.
 
