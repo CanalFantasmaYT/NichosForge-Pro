@@ -1,0 +1,9 @@
+* text=auto
+*.py   text eol=lf
+*.md   text eol=lf
+*.html text eol=lf
+*.bat  text eol=crlf
+*.onnx binary
+*.png  binary
+*.jpg  binary
+*.pdf  binary

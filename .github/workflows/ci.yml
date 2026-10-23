@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Compile all modules
+        run: python -m compileall -q main.py server.py core
+      - name: Import every module
+        run: python -c "import core.config, core.youtube, core.analisis, core.clasificador, core.cerebro, core.motor, core.rostros, core.miniaturas, core.seguimiento, core.alertas, core.monetizado, core.bot, server; print('ok')"
+      - name: Niche classifier sanity check
+        run: |
+          python -c "from core import clasificador as c; assert c.clasificar('The Untold Story of the Vanderbilt Family Fortune')[0]=='Old money y lujo'; assert c.clasificar('3 True Scary Stories From the Deep Woods')[0]=='Terror y paranormal'; print('classifier ok')"
+      - name: Server starts and answers
+        shell: bash
+        run: |
+          nohup python main.py panel --no-abrir > server.log 2>&1 &
+          PID=$!
+          ok=0
+          for i in $(seq 1 25); do sleep 1; if curl -sf http://127.0.0.1:8767/api/estado > /dev/null; then ok=1; break; fi; done
+          kill $PID 2>/dev/null || true
+          if [ "$ok" = "1" ]; then echo "server ok"; else cat server.log; echo "server did not start"; exit 1; fi

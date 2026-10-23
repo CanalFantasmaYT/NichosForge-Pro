@@ -1,0 +1,30 @@
+# --- Secrets / Claves (NEVER commit) ---
+.env
+.env.*
+!.env.example
+*.env.txt
+
+# --- Local data / Datos locales ---
+datos/*
+!datos/.gitkeep
+
+# --- Downloaded models (auto-downloaded on first use) ---
+modelos/face_recognition_sface_2021dec.onnx
+modelos/*.tmp
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.log
