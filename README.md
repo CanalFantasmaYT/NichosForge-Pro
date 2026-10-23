@@ -10,7 +10,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-informational)
-![License](https://img.shields.io/badge/license-MIT-green)
+![License](https://img.shields.io/badge/code-MIT-green) ![Methodology](https://img.shields.io/badge/methodology-all%20rights%20reserved-red)
 ![Local-first](https://img.shields.io/badge/runs-100%25%20local-success)
 
 <img src="docs/img/inicio.jpg" alt="NichosForge Pro dashboard" width="900">
@@ -78,7 +78,7 @@ It comes with **Nichi**, a ninja mascot and AI strategist that reasons with your
 
 ### macOS / Linux
 ```bash
-git clone https://github.com/<your-user>/nichosforge-pro.git
+git clone https://github.com/CanalFantasmaYT/nichosforge-pro.git
 cd nichosforge-pro
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
@@ -181,4 +181,6 @@ Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-[MIT](LICENSE) © NichosForge Pro contributors. Third-party components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- **Source code:** [MIT](LICENSE) © CanalFantasmaYT.
+- **“Aprende a Monetizar” methodology** (`core/academia.py`, the in-app methodology texts and the user guide): **© CanalFantasmaYT, all rights reserved** — see [METHODOLOGY_LICENSE.md](METHODOLOGY_LICENSE.md).
+- Third-party components: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -1,3 +1,8 @@
+# ==============================================================================
+#  «Aprende a Monetizar» — Copyright © 2026 CanalFantasmaYT. All rights reserved.
+#  Todos los derechos reservados. Este archivo NO está bajo la licencia MIT.
+#  This file is NOT under the MIT License. See METHODOLOGY_LICENSE.md.
+# ==============================================================================
 """Conocimiento de Aprende a Monetizar, resumido para NichosForge Pro.
 
 Lo usan: Nichi (como contexto de la IA y en modo guía), el buscador aleatorio de canales automatizados,

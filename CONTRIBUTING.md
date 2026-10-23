@@ -16,6 +16,9 @@ python main.py panel
 - Respect YouTube's terms: prefer the official Data API; anything that reads public pages must be **opt-in**.
 - Before opening a PR: `python -m compileall -q main.py server.py core` must pass, and the panel must load without errors in the browser console.
 
+## Methodology content / Contenido de la metodología
+`core/academia.py` is **not** open source (see `METHODOLOGY_LICENSE.md`). PRs that copy or redistribute it elsewhere will not be accepted; fixes to it are welcome. / `core/academia.py` **no** es de código abierto.
+
 ## Pull requests
 1. Fork and create a branch: `git checkout -b feature/my-change`.
 2. Describe **what** and **why**, with a screenshot if the UI changes.
