@@ -57,6 +57,16 @@ class P1_PeticionesDeOtroOrigen(unittest.TestCase):
         self.assertEqual(self._post(**{"Content-Type": "application/json", "X-NF-Token": self.token, "Origin": "https://evil.example"}), 403)
         self.assertEqual(self._post(**{"Content-Type": "application/json", "X-NF-Token": self.token, "Host": "evil.example"}), 403)
 
+    def test_token_solo_para_el_propio_panel(self):
+        req = urllib.request.Request(self.base + "/api/token", headers={"Host": "evil.example"})
+        with self.assertRaises(urllib.error.HTTPError) as e:
+            urllib.request.urlopen(req)
+        self.assertEqual(e.exception.code, 403)
+        r = json.loads(urllib.request.urlopen(self.base + "/api/token").read())
+        self.assertEqual(r["token"], self.token)
+        h = urllib.request.urlopen(self.base + "/api/token").headers
+        self.assertIsNone(h.get("Access-Control-Allow-Origin"), "sin CORS: otras webs no pueden leer el token")
+
     def test_panel_legitimo_permitido(self):
         antes = len(self.llamadas)
         self.assertEqual(self._post(**{"Content-Type": "application/json", "X-NF-Token": self.token, "Origin": self.base}), 200)

@@ -120,6 +120,8 @@ class Handler(BaseHTTPRequestHandler):
             elif u.path == "/api/academia":
                 self._json({"secciones": academia.SECCIONES, "preguntas": academia.PREGUNTAS, "tips": academia.TIPS,
                             "categorias": list(academia.SEMILLAS)})
+            elif u.path == "/api/token":
+                self._json({"token": TOKEN})                 # otras webs no pueden leerlo: sin CORS y Host validado
             elif u.path == "/api/investigaciones":
                 self._json({"lista": motor.investigaciones(), "costos": {k: motor.costo_investigacion(k) for k in motor.PROFUNDIDAD}})
             elif u.path == "/api/investigacion":

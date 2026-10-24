@@ -2,6 +2,11 @@
 
 All notable changes to this project. / Cambios importantes del proyecto.
 
+## [13.1] — Monetization check no longer hangs / La verificación de monetización ya no se queda cargando
+- One indicator with elapsed seconds, buttons locked while running, always cleaned up; errors shown inside the card.
+- The panel renews its session token automatically after a restart (no more silent 403s in an old tab).
+- Page reading: shorter timeouts, reason shown (timeout, cookie consent, HTTP code) and progress in the console.
+
 ## [13] — Code review fixes / Correcciones de la revisión de código
 - **P1 · Security:** write endpoints now require a per-session token, local `Host`/`Origin` and `application/json` (CSRF / DNS rebinding). / **Seguridad**: token de sesión y validación de origen.
 - **P1 · Tracking windows:** a 24 h window is “measured” only with a snapshot near its start; long gaps become a labeled daily **average**, short history a labeled **projection**. / Ventanas de 24 h honestas.

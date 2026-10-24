@@ -620,6 +620,16 @@ async function api(path, body){
   catch(e){ throw new Error(e.name==="AbortError" ? "El panel tardó demasiado en responder. Revisa la ventana negra de NichosForge." : "No hay conexión con el panel (¿cerraste la ventana negra?)."); }
   finally{ clearTimeout(tm); }
   const d = await r.json();
+  if (r.status === 403 && body && /token/i.test(d.error || "") && !api._reintento){
+    try{                                              // el panel se reinició: pide el token nuevo y reintenta una vez
+      const t = await (await fetch("/api/token")).json();
+      let meta = document.querySelector('meta[name="nf-token"]');
+      if (!meta){ meta = document.createElement("meta"); meta.name = "nf-token"; document.head.appendChild(meta); }
+      meta.content = t.token;
+      api._reintento = true;
+      try{ return await api(path, body); } finally { api._reintento = false; }
+    }catch(e){ /* sigue al error normal */ }
+  }
   if (!r.ok || d.error) throw new Error(d.error || r.statusText);
   return d;
 }
@@ -2892,16 +2902,31 @@ function bloqueMonet(a){
       <button class="btn sm" onclick="verificarMonet('${a.id}', ${m.pagina_leida?"true":"false"}, true)">↻ Volver a verificar</button></div>
     <div class="hint" style="margin-top:8px">Solo el dueño del canal ve en YouTube Studio si está en el Programa de Socios. Por eso digo «confirmado» únicamente cuando hay una prueba segura; en los demás casos te doy la probabilidad y sus motivos.</div></div>`;
 }
+S.monetEnCurso = S.monetEnCurso || {};
 async function verificarMonet(id, leerPagina, forzar){
+  if (S.monetEnCurso[id]) return toast("Ya lo estoy verificando, espera unos segundos…");
+  S.monetEnCurso[id] = true;
   const box = document.getElementById("monetBox-"+id);
-  if (box) box.insertAdjacentHTML("beforeend", `<div class="pensando" style="margin-top:8px"><i></i><i></i><i></i><span>${leerPagina?"Revisando su página pública…":"Recalculando…"}</span></div>`);
+  if (box){
+    box.querySelectorAll(".pensando, .monet-err").forEach(x=>x.remove());
+    box.querySelectorAll("button").forEach(b=>b.disabled = true);
+    box.insertAdjacentHTML("beforeend", `<div class="pensando" style="margin-top:8px"><i></i><i></i><i></i><span>${leerPagina?"Revisando su página pública de YouTube…":"Recalculando…"} <b class="mseg">0 s</b></span></div>`);
+  }
+  const t0 = Date.now(), reloj = setInterval(()=>{ const e = box && box.querySelector(".mseg"); if (e) e.textContent = Math.round((Date.now()-t0)/1000) + " s"; }, 1000);
   NI.mood("m-think", 0, "💰 Verificando…"); emote("💰");
   try{
     const r = await api("/api/monetizado", {id, forzar:true, leer_pagina:!!leerPagina});
     NI.mood(r.veredicto==="si"?"m-ok":r.veredicto==="no"?"m-bad":"m-warn", 2500, r.titulo); accion("Verificó la monetización de un canal: "+r.titulo);
-    if (leerPagina && !r.pagina_leida) toast("No pude leer su página pública (¿sin internet?). Muestro la estimación.");
-    if (!$("#modal").classList.contains("hidden")) abrirCanal(id);
-  }catch(e){ err(e); }
+    if (leerPagina && !r.pagina_leida) toast(r.error_pagina ? "No pude leer su página: " + r.error_pagina : "No pude leer su página pública. Muestro la estimación.", 5000);
+    if (!$("#modal").classList.contains("hidden")) await abrirCanal(id);
+  }catch(e){
+    if (box) box.insertAdjacentHTML("beforeend", `<div class="monet-err small" style="margin-top:8px;color:#e5534b">⚠ ${esc(e.message||e)}</div>`);
+    NI.mood("m-bad", 3000, "No pude verificar");
+  }finally{
+    clearInterval(reloj); delete S.monetEnCurso[id];
+    const b2 = document.getElementById("monetBox-"+id);
+    if (b2){ b2.querySelectorAll(".pensando").forEach(x=>x.remove()); b2.querySelectorAll("button").forEach(b=>b.disabled = false); }
+  }
 }
 const _canalCompletoV11 = canalCompleto;
 canalCompleto = function(a, pre){

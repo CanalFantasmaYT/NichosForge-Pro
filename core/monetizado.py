@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 import requests
 
 from .config import DATOS, ajustes
-from .utils import read_json, read_json_cache, write_json
+from .utils import log, read_json, read_json_cache, write_json
 
 RESULTADOS = DATOS / "monetizacion.json"
 VIGENCIA_DIAS = 7
@@ -66,13 +66,23 @@ def _requisitos(a: dict) -> dict:
 
 # ---------------- lectura de la página pública (opcional) ----------------
 
+_ultimo_error = {"msg": ""}
+
+
 def _leer(url: str) -> str | None:
+    """Descarga una página pública de YouTube (máx. ~20 s). Guarda el motivo si falla."""
     try:
-        r = requests.get(url, headers=CABECERAS, cookies=COOKIES, timeout=15)
+        r = requests.get(url, headers=CABECERAS, cookies=COOKIES, timeout=(6, 14))
         if r.status_code == 200 and len(r.text) > 5000:
+            if "consent.youtube.com" in r.url or "before you continue" in r.text[:20000].lower():
+                _ultimo_error["msg"] = "YouTube pidió aceptar cookies"
+                return None
             return r.text
-    except Exception:  # noqa: BLE001
-        pass
+        _ultimo_error["msg"] = f"YouTube respondió {r.status_code}"
+    except requests.Timeout:
+        _ultimo_error["msg"] = "YouTube tardó demasiado en responder"
+    except Exception as e:  # noqa: BLE001
+        _ultimo_error["msg"] = f"sin conexión ({type(e).__name__})"
     return None
 
 
@@ -82,9 +92,12 @@ def senales_pagina(cid: str, video_id: str | None) -> dict:
     paginas = [f"https://www.youtube.com/channel/{cid}"]
     if video_id:
         paginas.append(f"https://www.youtube.com/watch?v={video_id}")
+    _ultimo_error["msg"] = ""
     for url in paginas:
+        log(f"Monetización: leyendo {url} …")
         html = _leer(url)
         if not html:
+            log(f"Monetización: no pude leer la página ({_ultimo_error['msg']}).", "WARN")
             continue
         out["leida"] = True
         if PATRON_UNIRSE.search(html):
@@ -94,6 +107,10 @@ def senales_pagina(cid: str, video_id: str | None) -> dict:
         m = PATRON_ANUNCIOS.search(html)
         if m and out["anuncios"] is not True:
             out["anuncios"] = m.group(1) == "true"
+        if out["unirse"] or out["super_thanks"]:
+            break                                      # prueba directa encontrada: no hace falta la segunda página
+    out["error"] = "" if out["leida"] else _ultimo_error["msg"]
+    log(f"Monetización: página {'leída' if out['leida'] else 'NO leída'} · Unirse={out['unirse']} · Super Thanks={out['super_thanks']} · anuncios={out['anuncios']}")
     return out
 
 
@@ -191,6 +208,8 @@ def verificar(cid: str, forzar: bool = False, leer_pagina: bool | None = None) -
         largos = sorted([v for v in a.get("videos_lista", []) if not v.get("es_short")], key=lambda v: str(v.get("publicado")), reverse=True)
         pagina = senales_pagina(cid, largos[0]["id"] if largos else None)
     r = evaluar(a, pagina)
+    if pagina is not None and not pagina.get("leida"):
+        r["error_pagina"] = pagina.get("error") or "no se pudo leer"
     _guardar({cid: r})
     return r
 
